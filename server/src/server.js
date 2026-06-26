@@ -4,25 +4,28 @@ import { logger } from './config/logger.js';
 
 const PORT = config.PORT || 5000;
 
+// ---------------- START SERVER ----------------
 const server = app.listen(PORT, () => {
+  console.log("🚀 server.js loaded");
   logger.info(`🚀 Server running on http://localhost:${PORT}`);
   logger.info(`📚 Environment: ${config.NODE_ENV}`);
-  logger.info(`📊 Health check: http://localhost:${PORT}/health`);
+  logger.info(`📊 Health: http://localhost:${PORT}/health`);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM signal received: closing HTTP server');
+// ---------------- ERROR HANDLING ----------------
+server.on('error', (err) => {
+  console.error("❌ Server failed to start:", err.message);
+});
+
+// ---------------- GRACEFUL SHUTDOWN ----------------
+const shutdown = (signal) => {
+  logger.info(`${signal} received → shutting down`);
+
   server.close(() => {
     logger.info('HTTP server closed');
     process.exit(0);
   });
-});
+};
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT signal received: closing HTTP server');
-  server.close(() => {
-    logger.info('HTTP server closed');
-    process.exit(0);
-  });
-});
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
