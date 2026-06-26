@@ -3,12 +3,10 @@ import { config } from './env.js';
 import { logger } from './logger.js';
 import { initModels } from '../models/index.js';
 
-// ❗ DATABASE_URL kontrol (EN ÖNEMLİ KISIM)
 if (!config.DATABASE_URL) {
   throw new Error("❌ DATABASE_URL missing in environment variables");
 }
 
-// Sequelize instance
 export const sequelize = new Sequelize(config.DATABASE_URL, {
   dialect: 'postgres',
   dialectOptions: {
@@ -39,7 +37,6 @@ export const sequelize = new Sequelize(config.DATABASE_URL, {
   },
 });
 
-// DB connect function
 export const connectDB = async () => {
   try {
     await sequelize.authenticate();
@@ -48,18 +45,18 @@ export const connectDB = async () => {
 
     initModels(sequelize);
 
-    if (config.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      logger.info('✅ Database synced');
-    }
+    // 🔥 CRITICAL FIX (DEV + PROD)
+    await sequelize.sync({ alter: true });
+    logger.info('✅ Database synced');
 
     return sequelize;
 
   } catch (error) {
-    // ❗ ARTIK HATA GİZLENMİYOR (DEBUG İÇİN)
     logger.error('❌ DB connection failed:', error);
 
-    // serverı tamamen öldürme ama hatayı saklama
-    throw error;
+    // ❗ Render crash önleme
+    console.log("⚠️ DB failed but server will continue");
+
+    return null;
   }
 };
