@@ -3,51 +3,63 @@ import { config } from './env.js';
 import { logger } from './logger.js';
 import { initModels } from '../models/index.js';
 
-const sequelize = new Sequelize(
-  config.DB_NAME,
-  config.DB_USER,
-  config.DB_PASSWORD,
-  {
-    host: config.DB_HOST,
-    port: config.DB_PORT,
-    dialect: 'postgres',
-    logging: config.NODE_ENV === 'development' ? (msg) => logger.debug(msg) : false,
-    pool: {
-      max: 10,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
-    },
-    define: {
-      underscored: true,
-      timestamps: true,
-      createdAt: 'created_at',
-      updatedAt: 'updated_at',
-      deletedAt: 'deleted_at',
-      paranoid: true,
-    },
-  }
-);
+// ❗ DATABASE_URL kontrol (EN ÖNEMLİ KISIM)
+if (!config.DATABASE_URL) {
+  throw new Error("❌ DATABASE_URL missing in environment variables");
+}
 
-const connectDB = async () => {
+// Sequelize instance
+export const sequelize = new Sequelize(config.DATABASE_URL, {
+  dialect: 'postgres',
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
+
+  logging: config.NODE_ENV === 'development'
+    ? (msg) => logger.debug(msg)
+    : false,
+
+  pool: {
+    max: 10,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+
+  define: {
+    underscored: true,
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    deletedAt: 'deleted_at',
+    paranoid: true,
+  },
+});
+
+// DB connect function
+export const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    logger.info('✅ PostgreSQL connection established successfully.');
 
-    // Initialize models
+    logger.info('✅ Neon PostgreSQL connected');
+
     initModels(sequelize);
 
-    // Sync database (development only)
     if (config.NODE_ENV === 'development') {
-       await sequelize.sync({ alter: true });
-       logger.info('✅ Database synchronized');
+      await sequelize.sync({ alter: true });
+      logger.info('✅ Database synced');
     }
 
     return sequelize;
+
   } catch (error) {
-    logger.error('❌ Unable to connect to the database:', error);
-    process.exit(1);
+    // ❗ ARTIK HATA GİZLENMİYOR (DEBUG İÇİN)
+    logger.error('❌ DB connection failed:', error);
+
+    // serverı tamamen öldürme ama hatayı saklama
+    throw error;
   }
 };
-
-export { sequelize, connectDB };
