@@ -23,7 +23,11 @@ import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
 import { meetingRoutes } from './modules/meetings/meeting.routes.js';
 
 const app = express();
+const app = express();
 
+app.get("/", (req, res) => {
+  res.json({ status: "API running" });
+});
 // ---------------- SECURITY ----------------
 app.use(helmet());
 
